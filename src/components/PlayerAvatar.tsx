@@ -1,5 +1,6 @@
 import React from 'react';
 import {OPPONENT_AVATAR_URL} from '../avatars';
+import {AvatarImage} from './AvatarImage';
 
 interface PlayerAvatarProps {
   role: 'player' | 'bot';
@@ -36,7 +37,7 @@ export const PlayerAvatar: React.FC<PlayerAvatarProps> = ({
             ${role === 'player' ? 'bg-cream' : 'bg-indigo-deep'}`}
         >
           {resolvedAvatar ? (
-            <img src={resolvedAvatar} alt={name} className="h-full w-full object-cover" draggable={false} />
+            <AvatarImage src={resolvedAvatar} alt={name} />
           ) : (
             <div className="flex h-full w-full items-center justify-center bg-cream text-indigo-deep font-display text-xl">
               ?
