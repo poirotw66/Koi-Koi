@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Volume2, VolumeX } from 'lucide-react';
 import { Card as CardComponent } from './components/Card';
 import { CharacterSelect } from './components/CharacterSelect';
 import { PlayerAvatar } from './components/PlayerAvatar';
 import { getCharacterImageUrl } from './characters';
+import { useBgm } from './hooks/useBgm';
 import { useCharacterSelection } from './hooks/useCharacterSelection';
 import { Card, GameState, Phase, YakuResult } from './types';
 import { deal, calculateYaku, getMatchingCards } from './utils/gameLogic';
@@ -35,7 +37,14 @@ export default function App() {
   const [state, setState] = useState<GameState>(initialState);
   const lockRef = useRef(false);
   const { character, characterId, setCharacterId } = useCharacterSelection();
+  const { muted, toggleMute, unlock, currentTitle } = useBgm();
   const playerAvatarUrl = getCharacterImageUrl(character);
+
+  useEffect(() => {
+    const handler = () => unlock();
+    document.addEventListener('pointerdown', handler, { once: true });
+    return () => document.removeEventListener('pointerdown', handler);
+  }, [unlock]);
 
   useEffect(() => {
     if (['player_turn_hand', 'player_turn_hand_match', 'player_turn_draw_match', 'player_koi_koi', 'idle', 'round_end'].includes(state.phase)) {
@@ -385,7 +394,16 @@ export default function App() {
       {/* Header */}
       <header className="w-full max-w-6xl mb-4">
         <div className="wafu-panel rounded-2xl px-4 sm:px-6 py-4 relative overflow-hidden">
-          <div className="absolute top-2 right-4 text-vermillion/20 text-4xl select-none pointer-events-none sakura-petal">✿</div>
+          <button
+            type="button"
+            onClick={toggleMute}
+            className="absolute top-3 right-3 z-20 p-2 rounded-lg text-cream/60 hover:text-gold hover:bg-gold/10 transition-colors"
+            aria-label={muted ? '開啟背景音樂' : '關閉背景音樂'}
+            title={muted ? '開啟 BGM' : `BGM：${currentTitle}`}
+          >
+            {muted ? <VolumeX size={18} /> : <Volume2 size={18} />}
+          </button>
+          <div className="absolute top-2 right-12 text-vermillion/20 text-4xl select-none pointer-events-none sakura-petal">✿</div>
           <div className="absolute bottom-2 left-4 text-gold/20 text-3xl select-none pointer-events-none sakura-petal">❀</div>
           <div className="flex flex-col sm:flex-row justify-between items-center gap-4 relative z-10">
             <div className="text-center sm:text-left">
