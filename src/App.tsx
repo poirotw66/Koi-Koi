@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card as CardComponent } from './components/Card';
+import { PlayerAvatar } from './components/PlayerAvatar';
 import { Card, GameState, Phase, YakuResult } from './types';
 import { deal, calculateYaku, getMatchingCards } from './utils/gameLogic';
 import { motion, AnimatePresence } from 'motion/react';
@@ -365,89 +366,167 @@ export default function App() {
     }
   }, [state.phase]);
 
-  return (
-    <div className="min-h-screen bg-green-900 text-white font-sans flex flex-col items-center py-4 px-2 sm:px-8">
-      <div className="w-full max-w-6xl flex justify-between items-center mb-4">
-        <div>
-          <h1 className="text-2xl font-bold text-yellow-400">花牌 Koi-Koi</h1>
-          <p className="text-sm text-green-200">第 {state.round} 局 | 莊家: {state.dealer === 'player' ? '你' : '對手'}</p>
-        </div>
-        <div className="flex gap-8 text-lg font-semibold">
-          <div className="text-center">
-            <div className="text-green-300">對手分數</div>
-            <div className="text-2xl">{state.botScore}</div>
-          </div>
-          <div className="text-center">
-            <div className="text-green-300">你的分數</div>
-            <div className="text-2xl">{state.playerScore}</div>
-          </div>
-        </div>
-      </div>
+  const isPlayerActive = [
+    'player_turn_hand',
+    'player_turn_hand_match',
+    'player_turn_draw',
+    'player_turn_draw_match',
+    'player_koi_koi',
+  ].includes(state.phase);
+  const isBotActive = state.phase === 'bot_turn';
 
+  return (
+    <div className="min-h-screen flex flex-col items-center py-4 px-2 sm:px-6 pb-8">
+      {/* Header */}
+      <header className="w-full max-w-6xl mb-4">
+        <div className="wafu-panel rounded-2xl px-4 sm:px-6 py-4 relative overflow-hidden">
+          <div className="absolute top-2 right-4 text-vermillion/20 text-4xl select-none pointer-events-none sakura-petal">✿</div>
+          <div className="absolute bottom-2 left-4 text-gold/20 text-3xl select-none pointer-events-none sakura-petal">❀</div>
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-4 relative z-10">
+            <div className="text-center sm:text-left">
+              <p className="text-gold/80 text-xs tracking-[0.3em] mb-1">花札</p>
+              <h1 className="font-display text-2xl sm:text-3xl font-bold text-gold tracking-wide">Koi-Koi</h1>
+              <p className="text-sm text-cream/70 mt-1">
+                第 {state.round} 局 · 莊家：{state.dealer === 'player' ? '你' : '師匠'}
+              </p>
+            </div>
+            <div className="flex gap-6 sm:gap-10">
+              <div className="text-center">
+                <p className="text-xs text-cream/60 mb-1">師匠</p>
+                <p className="font-display text-2xl sm:text-3xl font-bold text-gold">{state.botScore}</p>
+              </div>
+              <div className="h-10 w-px bg-gold/30 self-center hidden sm:block" />
+              <div className="text-center">
+                <p className="text-xs text-cream/60 mb-1">你</p>
+                <p className="font-display text-2xl sm:text-3xl font-bold text-vermillion-light">{state.playerScore}</p>
+              </div>
+            </div>
+          </div>
+          <div className="sakura-divider mt-4" />
+        </div>
+      </header>
+
+      {/* Idle screen */}
       {state.phase === 'idle' && (
-        <button 
-          onClick={() => startGame(false)}
-          className="mt-20 px-8 py-4 bg-yellow-500 hover:bg-yellow-400 text-black font-bold rounded-xl text-xl shadow-lg transition-transform hover:scale-105"
-        >
-          開始遊戲
-        </button>
+        <div className="flex-1 flex flex-col items-center justify-center w-full max-w-2xl mt-8">
+          <div className="wafu-panel rounded-3xl p-8 sm:p-12 text-center relative">
+            <div className="corner-ornament corner-ornament-tl" />
+            <div className="corner-ornament corner-ornament-tr" />
+            <div className="corner-ornament corner-ornament-bl" />
+            <div className="corner-ornament corner-ornament-br" />
+            <div className="flex justify-center items-end gap-8 sm:gap-16 mb-8">
+              <PlayerAvatar
+                role="bot"
+                name="花札師匠"
+                score={state.botScore}
+                roundPoints={0}
+                isActive={false}
+                isDealer={state.dealer === 'bot'}
+                koiKoi={false}
+                size="lg"
+              />
+              <div className="font-display text-gold/50 text-2xl pb-8">VS</div>
+              <PlayerAvatar
+                role="player"
+                name="你"
+                score={state.playerScore}
+                roundPoints={0}
+                isActive={false}
+                isDealer={state.dealer === 'player'}
+                koiKoi={false}
+                size="lg"
+              />
+            </div>
+            <p className="text-cream/80 mb-2 font-display text-lg">歡迎來到花牌對局</p>
+            <p className="text-cream/50 text-sm mb-8 max-w-md mx-auto">
+              與師匠一決高下，湊齊光牌、短冊與動物牌組成役，在 Koi-Koi 與勝負之間做出你的選擇。
+            </p>
+            <button
+              onClick={() => startGame(false)}
+              className="wafu-btn-primary px-10 py-4 rounded-xl text-lg"
+            >
+              開始對局
+            </button>
+          </div>
+        </div>
       )}
 
+      {/* Game board */}
       {state.phase !== 'idle' && (
-        <div className="w-full max-w-6xl flex flex-col gap-4 flex-1">
-          
-          {/* Bot Area */}
-          <div className="flex justify-between items-start bg-green-950/50 p-4 rounded-xl border border-green-800">
-            <div className="flex-1">
-              <div className="text-sm text-green-400 mb-2">對手手牌 ({state.botHand.length})</div>
-              <div className="flex gap-1 sm:gap-2 flex-wrap">
-                {state.botHand.map(c => (
-                  <CardComponent key={c.id} card={c} hidden />
-                ))}
+        <div className="w-full max-w-6xl flex flex-col gap-3 flex-1">
+          {/* Opponent */}
+          <div className="wafu-panel rounded-2xl p-3 sm:p-4">
+            <div className="flex gap-3 sm:gap-4 items-start">
+              <div className="hidden sm:block shrink-0 pt-1">
+                <PlayerAvatar
+                  role="bot"
+                  name="花札師匠"
+                  score={state.botScore}
+                  roundPoints={state.botPoints}
+                  isActive={isBotActive}
+                  isDealer={state.dealer === 'bot'}
+                  koiKoi={state.koiKoiCount.bot > 0}
+                />
               </div>
-            </div>
-            <div className="w-1/3 pl-4 border-l border-green-800">
-              <div className="text-sm text-green-400 mb-2 flex justify-between">
-                <span>對手獲得 ({state.botPoints} 分)</span>
-                {state.koiKoiCount.bot > 0 && <span className="text-yellow-400 font-bold">Koi-Koi!</span>}
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-cream/50 mb-2 sm:hidden">師匠 · 手牌 {state.botHand.length}</p>
+                <p className="text-xs text-gold/70 mb-2 hidden sm:block">手牌 ({state.botHand.length})</p>
+                <div className="flex gap-1 sm:gap-2 flex-wrap">
+                  {state.botHand.map(c => (
+                    <CardComponent key={c.id} card={c} hidden />
+                  ))}
+                </div>
               </div>
-              <div className="flex gap-1 flex-wrap">
-                {state.botCaptured.map(c => (
-                  <CardComponent key={c.id} card={c} className="scale-75 origin-top-left" />
-                ))}
-              </div>
-              <div className="text-xs text-yellow-200 mt-2">
-                {state.botYaku.map(y => y.name).join(', ')}
+              <div className="w-28 sm:w-40 shrink-0 pl-3 border-l border-gold/20">
+                <p className="text-xs text-gold/70 mb-2">獲得牌</p>
+                <div className="flex gap-0.5 flex-wrap max-h-24 overflow-y-auto">
+                  {state.botCaptured.map(c => (
+                    <CardComponent key={c.id} card={c} className="scale-[0.65] origin-top-left" />
+                  ))}
+                </div>
+                {state.botYaku.length > 0 && (
+                  <p className="text-[10px] text-vermillion-light/90 mt-1 leading-tight">
+                    {state.botYaku.map(y => y.name).join(' · ')}
+                  </p>
+                )}
               </div>
             </div>
           </div>
 
-          {/* Field Area */}
-          <div className="flex-1 flex flex-col items-center justify-center relative py-8">
-            <div className="absolute top-0 w-full text-center text-lg font-bold text-yellow-300 bg-black/30 py-2 rounded">
-              {state.message}
+          {/* Field */}
+          <div className="tatami-table rounded-2xl flex-1 flex flex-col items-center justify-center relative py-10 sm:py-12 min-h-[200px]">
+            <div className="corner-ornament corner-ornament-tl" />
+            <div className="corner-ornament corner-ornament-tr" />
+            <div className="corner-ornament corner-ornament-bl" />
+            <div className="corner-ornament corner-ornament-br" />
+
+            <div className="absolute top-3 left-1/2 -translate-x-1/2 w-[92%] max-w-lg z-20">
+              <div className="speech-bubble rounded-xl px-4 py-2.5 text-center">
+                <p className="font-display text-sm sm:text-base font-semibold text-indigo-deep leading-snug">
+                  {state.message}
+                </p>
+              </div>
             </div>
 
-            {/* Drawn Card Display */}
             <AnimatePresence>
               {state.drawnCard && (
-                <motion.div 
+                <motion.div
                   initial={{ opacity: 0, y: -50, scale: 0.5 }}
-                  animate={{ opacity: 1, y: 0, scale: 1.2 }}
+                  animate={{ opacity: 1, y: 0, scale: 1.15 }}
                   exit={{ opacity: 0, scale: 0.5 }}
-                  className="absolute z-10 top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"
+                  className="absolute z-10 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
                 >
-                  <div className="text-center mb-2 font-bold text-yellow-300 drop-shadow-md">翻開的牌</div>
-                  <CardComponent card={state.drawnCard} className="shadow-2xl ring-4 ring-yellow-400" />
+                  <p className="text-center mb-2 font-display text-sm font-bold text-gold drop-shadow-md">山札</p>
+                  <CardComponent card={state.drawnCard} className="shadow-2xl ring-2 ring-gold" />
                 </motion.div>
               )}
             </AnimatePresence>
 
-            <div className="flex flex-wrap justify-center gap-2 sm:gap-4 max-w-4xl mt-8">
+            <div className="flex flex-wrap justify-center gap-2 sm:gap-3 max-w-4xl mt-10 px-2">
               {state.field.map(c => (
-                <CardComponent 
-                  key={c.id} 
-                  card={c} 
+                <CardComponent
+                  key={c.id}
+                  card={c}
                   onClick={() => handleFieldCardClick(c)}
                   highlighted={state.matchingFieldCards.some(mc => mc.id === c.id)}
                 />
@@ -455,95 +534,129 @@ export default function App() {
             </div>
           </div>
 
-          {/* Player Area */}
-          <div className="flex justify-between items-end bg-green-950/50 p-4 rounded-xl border border-green-800">
-            <div className="flex-1">
-              <div className="text-sm text-green-400 mb-2">你的手牌</div>
-              <div className="flex gap-1 sm:gap-2 flex-wrap">
-                {state.playerHand.map(c => (
-                  <CardComponent 
-                    key={c.id} 
-                    card={c} 
-                    onClick={() => handleHandCardClick(c)}
-                    selected={state.selectedHandCard?.id === c.id}
-                    className={state.phase === 'player_turn_hand' ? 'hover:-translate-y-2' : ''}
-                  />
-                ))}
+          {/* Player */}
+          <div className="wafu-panel rounded-2xl p-3 sm:p-4">
+            <div className="flex gap-3 sm:gap-4 items-end">
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-gold/70 mb-2">你的手牌</p>
+                <div className="flex gap-1 sm:gap-2 flex-wrap">
+                  {state.playerHand.map(c => (
+                    <CardComponent
+                      key={c.id}
+                      card={c}
+                      onClick={() => handleHandCardClick(c)}
+                      selected={state.selectedHandCard?.id === c.id}
+                      className={state.phase === 'player_turn_hand' ? 'hover:-translate-y-2' : ''}
+                    />
+                  ))}
+                </div>
               </div>
-            </div>
-            <div className="w-1/3 pl-4 border-l border-green-800">
-              <div className="text-sm text-green-400 mb-2 flex justify-between">
-                <span>你獲得 ({state.playerPoints} 分)</span>
-                {state.koiKoiCount.player > 0 && <span className="text-yellow-400 font-bold">Koi-Koi!</span>}
+              <div className="w-28 sm:w-40 shrink-0 pl-3 border-l border-gold/20">
+                <p className="text-xs text-gold/70 mb-2">獲得牌</p>
+                <div className="flex gap-0.5 flex-wrap max-h-24 overflow-y-auto">
+                  {state.playerCaptured.map(c => (
+                    <CardComponent key={c.id} card={c} className="scale-[0.65] origin-top-left" />
+                  ))}
+                </div>
+                {state.playerYaku.length > 0 && (
+                  <p className="text-[10px] text-vermillion-light/90 mt-1 leading-tight">
+                    {state.playerYaku.map(y => y.name).join(' · ')}
+                  </p>
+                )}
               </div>
-              <div className="flex gap-1 flex-wrap">
-                {state.playerCaptured.map(c => (
-                  <CardComponent key={c.id} card={c} className="scale-75 origin-top-left" />
-                ))}
-              </div>
-              <div className="text-xs text-yellow-200 mt-2">
-                {state.playerYaku.map(y => y.name).join(', ')}
+              <div className="hidden sm:block shrink-0 pb-1">
+                <PlayerAvatar
+                  role="player"
+                  name="你"
+                  score={state.playerScore}
+                  roundPoints={state.playerPoints}
+                  isActive={isPlayerActive}
+                  isDealer={state.dealer === 'player'}
+                  koiKoi={state.koiKoiCount.player > 0}
+                />
               </div>
             </div>
           </div>
-
         </div>
       )}
 
-      {/* Modals */}
+      {/* Koi-Koi modal */}
       {state.phase === 'player_koi_koi' && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
-          <div className="bg-green-900 border-2 border-yellow-500 p-8 rounded-2xl text-center max-w-md">
-            <h2 className="text-3xl font-bold text-yellow-400 mb-4">組成役！</h2>
-            <p className="text-xl mb-2">你目前獲得 {state.playerPoints} 分</p>
-            <p className="text-sm text-green-200 mb-8">
-              {state.playerYaku.map(y => `${y.name} (${y.points}分)`).join(' + ')}
+        <div className="fixed inset-0 bg-indigo-deep/90 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="wafu-modal rounded-2xl p-8 text-center max-w-md w-full relative"
+          >
+            <div className="corner-ornament corner-ornament-tl" />
+            <div className="corner-ornament corner-ornament-tr" />
+            <div className="corner-ornament corner-ornament-bl" />
+            <div className="corner-ornament corner-ornament-br" />
+            <div className="flex justify-center mb-4">
+              <PlayerAvatar
+                role="player"
+                name="你"
+                score={state.playerScore}
+                roundPoints={state.playerPoints}
+                isActive
+                isDealer={state.dealer === 'player'}
+                koiKoi={false}
+                size="lg"
+              />
+            </div>
+            <h2 className="font-display text-3xl font-bold text-gold mb-2">組成役！</h2>
+            <p className="text-xl text-cream mb-2">目前獲得 {state.playerPoints} 分</p>
+            <p className="text-sm text-cream/60 mb-8">
+              {state.playerYaku.map(y => `${y.name}（${y.points}分）`).join(' ＋ ')}
             </p>
-            <div className="flex gap-4 justify-center">
-              <button 
-                onClick={handleAgari}
-                className="px-6 py-3 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl transition-colors"
-              >
-                結束並結算 (勝負)
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <button onClick={handleAgari} className="wafu-btn-secondary px-6 py-3 rounded-xl">
+                勝負（結算）
               </button>
-              <button 
-                onClick={handleKoiKoi}
-                className="px-6 py-3 bg-yellow-500 hover:bg-yellow-400 text-black font-bold rounded-xl transition-colors"
-              >
-                Koi-Koi (繼續)
+              <button onClick={handleKoiKoi} className="wafu-btn-gold px-6 py-3 rounded-xl">
+                Koi-Koi（繼續）
               </button>
             </div>
-          </div>
+          </motion.div>
         </div>
       )}
 
+      {/* Round end modal */}
       {state.phase === 'round_end' && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
-          <div className="bg-green-900 border-2 border-yellow-500 p-8 rounded-2xl text-center max-w-md">
-            <h2 className="text-3xl font-bold text-yellow-400 mb-4">回合結束</h2>
-            <p className="text-xl mb-8">{state.message}</p>
-            <button 
+        <div className="fixed inset-0 bg-indigo-deep/90 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="wafu-modal rounded-2xl p-8 text-center max-w-md w-full relative"
+          >
+            <div className="corner-ornament corner-ornament-tl" />
+            <div className="corner-ornament corner-ornament-tr" />
+            <div className="corner-ornament corner-ornament-bl" />
+            <div className="corner-ornament corner-ornament-br" />
+            <h2 className="font-display text-3xl font-bold text-gold mb-4">回合結束</h2>
+            <p className="text-lg text-cream mb-8">{state.message}</p>
+            <button
               onClick={() => startGame(true)}
-              className="px-8 py-4 bg-yellow-500 hover:bg-yellow-400 text-black font-bold rounded-xl text-xl transition-transform hover:scale-105"
+              className="wafu-btn-gold px-8 py-4 rounded-xl text-lg"
             >
               下一局
             </button>
-          </div>
+          </motion.div>
         </div>
       )}
 
-      <p className="mt-6 max-w-6xl text-center text-[10px] text-green-300/80">
+      <footer className="mt-6 max-w-6xl text-center text-[10px] text-cream/40 px-4">
         牌面圖素材：Louie Mantia ·{' '}
         <a
           href="https://commons.wikimedia.org/wiki/Category:SVG_Hanafuda_with_traditional_colors_(black_border)"
-          className="underline hover:text-green-200"
+          className="underline hover:text-gold/70"
           target="_blank"
           rel="noreferrer"
         >
           Wikimedia Commons
         </a>
-        {' '}· CC BY-SA 4.0（保底素材，後續可替換自訂主題）
-      </p>
+        {' '}· CC BY-SA 4.0
+      </footer>
     </div>
   );
 }
