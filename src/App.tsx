@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Card as CardComponent } from './components/Card';
+import { CharacterSelect } from './components/CharacterSelect';
 import { PlayerAvatar } from './components/PlayerAvatar';
+import { getCharacterImageUrl } from './characters';
+import { useCharacterSelection } from './hooks/useCharacterSelection';
 import { Card, GameState, Phase, YakuResult } from './types';
 import { deal, calculateYaku, getMatchingCards } from './utils/gameLogic';
 import { motion, AnimatePresence } from 'motion/react';
@@ -31,6 +34,8 @@ const initialState: GameState = {
 export default function App() {
   const [state, setState] = useState<GameState>(initialState);
   const lockRef = useRef(false);
+  const { character, characterId, setCharacterId } = useCharacterSelection();
+  const playerAvatarUrl = getCharacterImageUrl(character);
 
   useEffect(() => {
     if (['player_turn_hand', 'player_turn_hand_match', 'player_turn_draw_match', 'player_koi_koi', 'idle', 'round_end'].includes(state.phase)) {
@@ -387,7 +392,7 @@ export default function App() {
               <p className="text-gold/80 text-xs tracking-[0.3em] mb-1">花札</p>
               <h1 className="font-display text-2xl sm:text-3xl font-bold text-gold tracking-wide">Koi-Koi</h1>
               <p className="text-sm text-cream/70 mt-1">
-                第 {state.round} 局 · 莊家：{state.dealer === 'player' ? '你' : '師匠'}
+                第 {state.round} 局 · 莊家：{state.dealer === 'player' ? character.name : '師匠'}
               </p>
             </div>
             <div className="flex gap-6 sm:gap-10">
@@ -397,7 +402,7 @@ export default function App() {
               </div>
               <div className="h-10 w-px bg-gold/30 self-center hidden sm:block" />
               <div className="text-center">
-                <p className="text-xs text-cream/60 mb-1">你</p>
+                <p className="text-xs text-cream/60 mb-1">{character.name}</p>
                 <p className="font-display text-2xl sm:text-3xl font-bold text-vermillion-light">{state.playerScore}</p>
               </div>
             </div>
@@ -408,13 +413,13 @@ export default function App() {
 
       {/* Idle screen */}
       {state.phase === 'idle' && (
-        <div className="flex-1 flex flex-col items-center justify-center w-full max-w-2xl mt-8">
-          <div className="wafu-panel rounded-3xl p-8 sm:p-12 text-center relative">
+        <div className="flex-1 flex flex-col items-center w-full max-w-4xl mt-4 gap-6">
+          <div className="wafu-panel rounded-3xl p-6 sm:p-10 text-center relative w-full">
             <div className="corner-ornament corner-ornament-tl" />
             <div className="corner-ornament corner-ornament-tr" />
             <div className="corner-ornament corner-ornament-bl" />
             <div className="corner-ornament corner-ornament-br" />
-            <div className="flex justify-center items-end gap-8 sm:gap-16 mb-8">
+            <div className="flex justify-center items-end gap-8 sm:gap-16 mb-6">
               <PlayerAvatar
                 role="bot"
                 name="花札師匠"
@@ -428,26 +433,32 @@ export default function App() {
               <div className="font-display text-gold/50 text-2xl pb-8">VS</div>
               <PlayerAvatar
                 role="player"
-                name="你"
+                name={character.name}
                 score={state.playerScore}
                 roundPoints={0}
                 isActive={false}
                 isDealer={state.dealer === 'player'}
                 koiKoi={false}
                 size="lg"
+                avatarSrc={playerAvatarUrl}
               />
             </div>
-            <p className="text-cream/80 mb-2 font-display text-lg">歡迎來到花牌對局</p>
-            <p className="text-cream/50 text-sm mb-8 max-w-md mx-auto">
-              與師匠一決高下，湊齊光牌、短冊與動物牌組成役，在 Koi-Koi 與勝負之間做出你的選擇。
+            <p className="text-cream/80 mb-1 font-display text-lg">歡迎來到花牌對局</p>
+            <p className="text-cream/50 text-sm mb-6 max-w-md mx-auto">
+              扮演「{character.name}」與師匠一決高下，湊齊光牌、短冊與動物牌組成役。
             </p>
-            <button
-              onClick={() => startGame(false)}
-              className="wafu-btn-primary px-10 py-4 rounded-xl text-lg"
-            >
-              開始對局
-            </button>
           </div>
+
+          <div className="wafu-panel rounded-2xl p-4 sm:p-6 w-full">
+            <CharacterSelect selectedId={characterId} onSelect={setCharacterId} />
+          </div>
+
+          <button
+            onClick={() => startGame(false)}
+            className="wafu-btn-primary px-10 py-4 rounded-xl text-lg"
+          >
+            開始對局
+          </button>
         </div>
       )}
 
@@ -567,12 +578,13 @@ export default function App() {
               <div className="hidden sm:block shrink-0 pb-1">
                 <PlayerAvatar
                   role="player"
-                  name="你"
+                  name={character.name}
                   score={state.playerScore}
                   roundPoints={state.playerPoints}
                   isActive={isPlayerActive}
                   isDealer={state.dealer === 'player'}
                   koiKoi={state.koiKoiCount.player > 0}
+                  avatarSrc={playerAvatarUrl}
                 />
               </div>
             </div>
@@ -595,13 +607,14 @@ export default function App() {
             <div className="flex justify-center mb-4">
               <PlayerAvatar
                 role="player"
-                name="你"
+                name={character.name}
                 score={state.playerScore}
                 roundPoints={state.playerPoints}
                 isActive
                 isDealer={state.dealer === 'player'}
                 koiKoi={false}
                 size="lg"
+                avatarSrc={playerAvatarUrl}
               />
             </div>
             <h2 className="font-display text-3xl font-bold text-gold mb-2">組成役！</h2>
@@ -634,7 +647,10 @@ export default function App() {
             <div className="corner-ornament corner-ornament-bl" />
             <div className="corner-ornament corner-ornament-br" />
             <h2 className="font-display text-3xl font-bold text-gold mb-4">回合結束</h2>
-            <p className="text-lg text-cream mb-8">{state.message}</p>
+            <p className="text-lg text-cream mb-6">{state.message}</p>
+            <div className="mb-6">
+              <CharacterSelect selectedId={characterId} onSelect={setCharacterId} compact />
+            </div>
             <button
               onClick={() => startGame(true)}
               className="wafu-btn-gold px-8 py-4 rounded-xl text-lg"
