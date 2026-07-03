@@ -17,7 +17,7 @@ export const Card: React.FC<Props> = ({card, onClick, selected, highlighted, hid
   if (hidden) {
     return (
       <div
-        className={`w-16 h-24 sm:w-20 sm:h-32 rounded border-2 border-black shadow-md overflow-hidden bg-red-900 ${className}`}
+        className={`w-16 h-24 sm:w-20 sm:h-32 rounded-sm border-2 border-lacquer shadow-md overflow-hidden ${className}`}
         aria-hidden="true"
       >
         <img
@@ -36,9 +36,9 @@ export const Card: React.FC<Props> = ({card, onClick, selected, highlighted, hid
     <div
       onClick={onClick}
       title={`${card.month}月 ${monthNames[card.month - 1]} · ${card.name}`}
-      className={`relative w-16 h-24 sm:w-20 sm:h-32 rounded border-2 overflow-hidden cursor-pointer shadow-sm transition-all duration-200 bg-white
-        ${selected ? 'border-yellow-400 border-4 -translate-y-2 shadow-lg' : 'border-black'}
-        ${highlighted ? 'border-blue-400 border-4 shadow-blue-400/50 shadow-lg animate-pulse' : ''}
+      className={`relative w-16 h-24 sm:w-20 sm:h-32 rounded-sm border-2 overflow-hidden cursor-pointer shadow-md transition-all duration-200 bg-washi
+        ${selected ? 'border-gold border-[3px] -translate-y-2 shadow-lg ring-2 ring-vermillion/50' : 'border-lacquer/80'}
+        ${highlighted ? 'border-vermillion border-[3px] shadow-lg shadow-vermillion/30 animate-pulse' : ''}
         ${className}
       `}
     >
