@@ -1,5 +1,6 @@
 import React from 'react';
 import {ANIMAL_CHARACTERS, getCharacterImageUrl} from '../characters';
+import {AvatarImage} from './AvatarImage';
 
 interface CharacterSelectProps {
   selectedId: string;
@@ -45,11 +46,9 @@ export const CharacterSelect: React.FC<CharacterSelectProps> = ({
                   ${compact ? 'w-10 h-10 sm:w-12 sm:h-12' : 'w-16 h-16 sm:w-20 sm:h-20'}
                   ${isSelected ? 'border-gold' : 'border-gold/30 group-hover:border-gold/60'}`}
               >
-                <img
+                <AvatarImage
                   src={getCharacterImageUrl(character)}
                   alt={character.name}
-                  className="h-full w-full object-cover"
-                  draggable={false}
                 />
               </div>
               {!compact && (

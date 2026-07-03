@@ -8,7 +8,7 @@ export interface AnimalCharacter {
 }
 
 const STYLE_SUFFIX =
-  'Japanese hanafuda Koi-Koi game avatar portrait, bust shot, centered composition, wearing elegant traditional kimono, warm wafu palette with vermillion gold and cream accents, soft illustrated style mixing watercolor and anime cel shading, subtle ornate gold circular vignette, dark indigo gradient background, friendly confident expression, square format profile icon, no text, no watermark, high quality character art';
+  'Square 1:1 avatar icon for circular crop, tight head-and-shoulders portrait, face large and centered filling 70 percent of frame, no oval border or decorative frame, simple dark indigo gradient background, wafu vermillion gold cream palette, soft watercolor anime illustration, symmetrical composition, no text, no watermark, high quality game profile art';
 
 export const ANIMAL_CHARACTERS: AnimalCharacter[] = [
   {
