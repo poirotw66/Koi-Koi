@@ -532,6 +532,18 @@ export default function App() {
         </div>
       )}
 
+      <p className="mt-6 max-w-6xl text-center text-[10px] text-green-300/80">
+        牌面圖素材：Louie Mantia ·{' '}
+        <a
+          href="https://commons.wikimedia.org/wiki/Category:SVG_Hanafuda_with_traditional_colors_(black_border)"
+          className="underline hover:text-green-200"
+          target="_blank"
+          rel="noreferrer"
+        >
+          Wikimedia Commons
+        </a>
+        {' '}· CC BY-SA 4.0（保底素材，後續可替換自訂主題）
+      </p>
     </div>
   );
 }
