@@ -1,5 +1,5 @@
 import React from 'react';
-import {OPPONENT_AVATAR_URL, PLAYER_AVATAR_URL} from '../avatars';
+import {OPPONENT_AVATAR_URL} from '../avatars';
 
 interface PlayerAvatarProps {
   role: 'player' | 'bot';
@@ -10,6 +10,7 @@ interface PlayerAvatarProps {
   isDealer: boolean;
   koiKoi: boolean;
   size?: 'sm' | 'lg';
+  avatarSrc?: string;
 }
 
 export const PlayerAvatar: React.FC<PlayerAvatarProps> = ({
@@ -21,8 +22,9 @@ export const PlayerAvatar: React.FC<PlayerAvatarProps> = ({
   isDealer,
   koiKoi,
   size = 'sm',
+  avatarSrc,
 }) => {
-  const avatarSrc = role === 'player' ? PLAYER_AVATAR_URL : OPPONENT_AVATAR_URL;
+  const resolvedAvatar = avatarSrc ?? (role === 'player' ? undefined : OPPONENT_AVATAR_URL);
   const sizeClass = size === 'lg' ? 'w-24 h-24 sm:w-28 sm:h-28' : 'w-16 h-16 sm:w-20 sm:h-20';
 
   return (
@@ -33,7 +35,13 @@ export const PlayerAvatar: React.FC<PlayerAvatarProps> = ({
             ${isActive ? 'avatar-active border-vermillion scale-105' : 'border-gold/60'}
             ${role === 'player' ? 'bg-cream' : 'bg-indigo-deep'}`}
         >
-          <img src={avatarSrc} alt={name} className="h-full w-full object-cover" draggable={false} />
+          {resolvedAvatar ? (
+            <img src={resolvedAvatar} alt={name} className="h-full w-full object-cover" draggable={false} />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center bg-cream text-indigo-deep font-display text-xl">
+              ?
+            </div>
+          )}
         </div>
         {isDealer && (
           <span className="absolute -top-1 -right-1 rounded-full bg-vermillion px-1.5 py-0.5 text-[10px] font-bold text-cream shadow-md border border-gold">
