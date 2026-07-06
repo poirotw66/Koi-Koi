@@ -3,6 +3,7 @@ import { Volume2, VolumeX, HelpCircle } from 'lucide-react';
 import { Card as CardComponent } from './components/Card';
 import { CharacterSelect } from './components/CharacterSelect';
 import { MatchScoreboard } from './components/MatchScoreboard';
+import { CapturedPanel } from './components/CapturedPanel';
 import { PlayerAvatar } from './components/PlayerAvatar';
 import { RulesModal } from './components/RulesModal';
 import { getCharacterImageUrl } from './characters';
@@ -560,18 +561,8 @@ export default function App() {
                   ))}
                 </div>
               </div>
-              <div className="w-28 sm:w-40 shrink-0 pl-3 border-l border-gold/20">
-                <p className="text-xs text-gold/70 mb-2">獲得牌</p>
-                <div className="flex gap-0.5 flex-wrap max-h-24 overflow-y-auto">
-                  {state.botCaptured.map(c => (
-                    <CardComponent key={c.id} card={c} className="scale-[0.65] origin-top-left" />
-                  ))}
-                </div>
-                {state.botYaku.length > 0 && (
-                  <p className="text-[10px] text-vermillion-light/90 mt-1 leading-tight">
-                    {state.botYaku.map(y => y.name).join(' · ')}
-                  </p>
-                )}
+              <div className="w-36 sm:w-52 shrink-0 pl-3 border-l border-gold/20">
+                <CapturedPanel captured={state.botCaptured} />
               </div>
             </div>
           </div>
@@ -634,18 +625,8 @@ export default function App() {
                   ))}
                 </div>
               </div>
-              <div className="w-28 sm:w-40 shrink-0 pl-3 border-l border-gold/20">
-                <p className="text-xs text-gold/70 mb-2">獲得牌</p>
-                <div className="flex gap-0.5 flex-wrap max-h-24 overflow-y-auto">
-                  {state.playerCaptured.map(c => (
-                    <CardComponent key={c.id} card={c} className="scale-[0.65] origin-top-left" />
-                  ))}
-                </div>
-                {state.playerYaku.length > 0 && (
-                  <p className="text-[10px] text-vermillion-light/90 mt-1 leading-tight">
-                    {state.playerYaku.map(y => y.name).join(' · ')}
-                  </p>
-                )}
+              <div className="w-36 sm:w-52 shrink-0 pl-3 border-l border-gold/20">
+                <CapturedPanel captured={state.playerCaptured} />
               </div>
               <div className="hidden sm:block shrink-0 pb-1">
                 <PlayerAvatar
