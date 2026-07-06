@@ -10,8 +10,30 @@ export interface Card {
 }
 
 export interface YakuResult {
+  id: YakuId;
   name: string;
   points: number;
+  cardIds: string[];
+}
+
+export type YakuId =
+  | 'gokou'
+  | 'shikou'
+  | 'ame_shikou'
+  | 'sankou'
+  | 'ino_shika_cho'
+  | 'tsukimi_zake'
+  | 'hanami_zake'
+  | 'tane'
+  | 'akatan'
+  | 'aotan'
+  | 'tanzaku'
+  | 'kasu';
+
+export interface YakuDetail {
+  yaku: YakuResult[];
+  totalPoints: number;
+  unassignedCardIds: string[];
 }
 
 export type Phase = 
