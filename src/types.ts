@@ -22,7 +22,8 @@ export type Phase =
   | 'player_turn_draw_match' 
   | 'player_koi_koi' 
   | 'bot_turn' 
-  | 'round_end';
+  | 'round_end'
+  | 'game_over';
 
 export interface GameState {
   deck: Card[];
@@ -45,4 +46,5 @@ export interface GameState {
   round: number;
   dealer: 'player' | 'bot';
   koiKoiCount: { player: number, bot: number };
+  winner: 'player' | 'bot' | null;
 }

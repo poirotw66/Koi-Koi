@@ -105,3 +105,41 @@ export function calculateYaku(captured: Card[]): { yaku: YakuResult[], totalPoin
 export function getMatchingCards(card: Card, field: Card[]): Card[] {
   return field.filter(c => c.month === card.month);
 }
+
+export const WIN_SCORE = 12;
+
+export function getMatchWinner(playerScore: number, botScore: number): 'player' | 'bot' | null {
+  const playerWins = playerScore >= WIN_SCORE;
+  const botWins = botScore >= WIN_SCORE;
+  if (!playerWins && !botWins) return null;
+  if (playerWins && botWins) return playerScore >= botScore ? 'player' : 'bot';
+  return playerWins ? 'player' : 'bot';
+}
+
+export function scoreToWin(currentScore: number): number {
+  return Math.max(0, WIN_SCORE - currentScore);
+}
+
+export interface RoundResolution {
+  playerScore: number;
+  botScore: number;
+  phase: 'round_end' | 'game_over';
+  winner: 'player' | 'bot' | null;
+}
+
+export function resolveRoundScores(
+  playerScore: number,
+  botScore: number,
+  playerGain: number,
+  botGain: number,
+): RoundResolution {
+  const nextPlayer = playerScore + playerGain;
+  const nextBot = botScore + botGain;
+  const winner = getMatchWinner(nextPlayer, nextBot);
+  return {
+    playerScore: nextPlayer,
+    botScore: nextBot,
+    phase: winner ? 'game_over' : 'round_end',
+    winner,
+  };
+}

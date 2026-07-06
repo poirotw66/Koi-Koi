@@ -1,13 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Volume2, VolumeX } from 'lucide-react';
+import { Volume2, VolumeX, HelpCircle } from 'lucide-react';
 import { Card as CardComponent } from './components/Card';
 import { CharacterSelect } from './components/CharacterSelect';
+import { MatchScoreboard } from './components/MatchScoreboard';
 import { PlayerAvatar } from './components/PlayerAvatar';
+import { RulesModal } from './components/RulesModal';
 import { getCharacterImageUrl } from './characters';
 import { useBgm } from './hooks/useBgm';
 import { useCharacterSelection } from './hooks/useCharacterSelection';
+import { useSfx } from './hooks/useSfx';
 import { Card, GameState, Phase, YakuResult } from './types';
-import { deal, calculateYaku, getMatchingCards } from './utils/gameLogic';
+import { deal, calculateYaku, getMatchingCards, resolveRoundScores, WIN_SCORE } from './utils/gameLogic';
 import { motion, AnimatePresence } from 'motion/react';
 
 const initialState: GameState = {
@@ -31,13 +34,16 @@ const initialState: GameState = {
   round: 1,
   dealer: 'player',
   koiKoiCount: { player: 0, bot: 0 },
+  winner: null,
 };
 
 export default function App() {
   const [state, setState] = useState<GameState>(initialState);
+  const [showRules, setShowRules] = useState(false);
   const lockRef = useRef(false);
   const { character, characterId, setCharacterId } = useCharacterSelection();
   const { muted, toggleMute, unlock, currentTitle } = useBgm();
+  const { play: playSfx } = useSfx();
   const playerAvatarUrl = getCharacterImageUrl(character);
 
   useEffect(() => {
@@ -47,43 +53,51 @@ export default function App() {
   }, [unlock]);
 
   useEffect(() => {
-    if (['player_turn_hand', 'player_turn_hand_match', 'player_turn_draw_match', 'player_koi_koi', 'idle', 'round_end'].includes(state.phase)) {
+    if (['player_turn_hand', 'player_turn_hand_match', 'player_turn_draw_match', 'player_koi_koi', 'idle', 'round_end', 'game_over'].includes(state.phase)) {
       lockRef.current = false;
     }
   }, [state.phase]);
 
-  const startGame = (isNextRound = false) => {
+  const startGame = (isNextRound = false, resetMatch = false) => {
     if (lockRef.current) return;
     lockRef.current = true;
     const { deck, playerHand, botHand, field } = deal();
-    setState(s => ({
-      ...initialState,
-      deck,
-      playerHand,
-      botHand,
-      field,
-      phase: s.dealer === 'player' ? 'player_turn_hand' : 'bot_turn',
-      message: s.dealer === 'player' ? '你的回合：請從手牌選擇一張牌。' : '對手的回合...',
-      playerScore: s.playerScore,
-      botScore: s.botScore,
-      round: isNextRound ? s.round + 1 : s.round,
-      dealer: s.dealer,
-    }));
+    setState(s => {
+      const dealer = resetMatch ? 'player' : s.dealer;
+      return {
+        ...initialState,
+        deck,
+        playerHand,
+        botHand,
+        field,
+        phase: dealer === 'player' ? 'player_turn_hand' : 'bot_turn',
+        message: dealer === 'player' ? '你的回合：請從手牌選擇一張牌。' : '對手的回合...',
+        playerScore: resetMatch ? 0 : s.playerScore,
+        botScore: resetMatch ? 0 : s.botScore,
+        round: resetMatch ? 1 : (isNextRound ? s.round + 1 : s.round),
+        dealer,
+        winner: null,
+      };
+    });
   };
 
   const endTurn = (nextPlayer: 'player' | 'bot') => {
     setState(s => {
       // Check if hands are empty (round over, draw)
       if (s.playerHand.length === 0 && s.botHand.length === 0) {
-        // Dealer gets 1 point for draw (Oya-ken)
-        const newPlayerScore = s.playerScore + (s.dealer === 'player' ? 1 : 0);
-        const newBotScore = s.botScore + (s.dealer === 'bot' ? 1 : 0);
+        const playerGain = s.dealer === 'player' ? 1 : 0;
+        const botGain = s.dealer === 'bot' ? 1 : 0;
+        const resolved = resolveRoundScores(s.playerScore, s.botScore, playerGain, botGain);
+        playSfx(resolved.winner ? 'win' : 'draw');
         return {
           ...s,
-          phase: 'round_end',
-          message: '流局！莊家獲得 1 分親權。',
-          playerScore: newPlayerScore,
-          botScore: newBotScore,
+          phase: resolved.phase,
+          winner: resolved.winner,
+          playerScore: resolved.playerScore,
+          botScore: resolved.botScore,
+          message: resolved.winner
+            ? `流局！莊家獲得 1 分親權。${resolved.winner === 'player' ? '你先達 ' + WIN_SCORE + ' 分獲勝！' : '師匠先達 ' + WIN_SCORE + ' 分獲勝！'}`
+            : '流局！莊家獲得 1 分親權。',
         };
       }
 
@@ -105,6 +119,7 @@ export default function App() {
     const { yaku, totalPoints } = calculateYaku(captured);
     
     if (totalPoints > currentPoints) {
+      playSfx('yaku');
       // New Yaku formed!
       if (player === 'player') {
         setState({
@@ -128,17 +143,23 @@ export default function App() {
           });
           setTimeout(() => endTurn('player'), 2000);
         } else {
-          // Bot Agari
           let finalPoints = totalPoints;
-          if (newState.koiKoiCount.player > 0) finalPoints *= 2; // Double if player called Koi-Koi
-          
+          if (newState.koiKoiCount.player > 0) finalPoints *= 2;
+
+          const resolved = resolveRoundScores(newState.playerScore, newState.botScore, 0, finalPoints);
+          if (resolved.winner) playSfx('win');
+
           setState({
             ...newState,
             botYaku: yaku,
             botPoints: totalPoints,
-            botScore: newState.botScore + finalPoints,
-            phase: 'round_end',
-            message: `對手結束了遊戲！獲得 ${finalPoints} 分。`,
+            playerScore: resolved.playerScore,
+            botScore: resolved.botScore,
+            phase: resolved.phase,
+            winner: resolved.winner,
+            message: resolved.winner === 'bot'
+              ? `對手結束了遊戲！獲得 ${finalPoints} 分，先達 ${WIN_SCORE} 分獲勝！`
+              : `對手結束了遊戲！獲得 ${finalPoints} 分。`,
             dealer: 'bot',
           });
         }
@@ -168,6 +189,7 @@ export default function App() {
       setState(nextState);
       setTimeout(() => handleYakuCheck(player, nextState), 1500);
     } else if (matches.length === 1) {
+      playSfx('match');
       nextState.field = nextState.field.filter(c => c.id !== matches[0].id);
       const captured = player === 'player' ? nextState.playerCaptured : nextState.botCaptured;
       if (player === 'player') {
@@ -193,6 +215,7 @@ export default function App() {
         setTimeout(() => handleYakuCheck('bot', nextState), 1500);
       }
     } else if (matches.length === 3) {
+      playSfx('match');
       nextState.field = nextState.field.filter(c => c.month !== drawnCard.month);
       const captured = player === 'player' ? nextState.playerCaptured : nextState.botCaptured;
       if (player === 'player') {
@@ -223,6 +246,7 @@ export default function App() {
       }));
       setTimeout(() => executeDrawPhase({ ...state, playerHand: newHand, field: [...state.field, card] }, 'player'), 1000);
     } else if (matches.length === 1) {
+      playSfx('match');
       setState(s => ({
         ...s,
         playerHand: newHand,
@@ -247,6 +271,7 @@ export default function App() {
         message: '場上有兩張可配對，請選擇一張。',
       }));
     } else if (matches.length === 3) {
+      playSfx('match');
       setState(s => ({
         ...s,
         playerHand: newHand,
@@ -270,6 +295,7 @@ export default function App() {
     if (state.phase === 'player_turn_hand_match' && state.selectedHandCard) {
       if (!state.matchingFieldCards.find(c => c.id === card.id)) return;
       lockRef.current = true;
+      playSfx('match');
 
       const nextState = {
         ...state,
@@ -285,6 +311,7 @@ export default function App() {
     } else if (state.phase === 'player_turn_draw_match' && state.drawnCard) {
       if (!state.matchingFieldCards.find(c => c.id === card.id)) return;
       lockRef.current = true;
+      playSfx('match');
 
       const nextState = {
         ...state,
@@ -314,13 +341,20 @@ export default function App() {
     if (lockRef.current) return;
     lockRef.current = true;
     let finalPoints = state.playerPoints;
-    if (state.koiKoiCount.bot > 0) finalPoints *= 2; // Double if bot called Koi-Koi
-    
+    if (state.koiKoiCount.bot > 0) finalPoints *= 2;
+
+    const resolved = resolveRoundScores(state.playerScore, state.botScore, finalPoints, 0);
+    if (resolved.winner) playSfx('win');
+
     setState(s => ({
       ...s,
-      playerScore: s.playerScore + finalPoints,
-      phase: 'round_end',
-      message: `你結束了遊戲！獲得 ${finalPoints} 分。`,
+      playerScore: resolved.playerScore,
+      botScore: resolved.botScore,
+      phase: resolved.phase,
+      winner: resolved.winner,
+      message: resolved.winner === 'player'
+        ? `你結束了遊戲！獲得 ${finalPoints} 分，先達 ${WIN_SCORE} 分獲勝！`
+        : `你結束了遊戲！獲得 ${finalPoints} 分。`,
       dealer: 'player',
     }));
   };
@@ -360,11 +394,12 @@ export default function App() {
           nextState.field = [...nextState.field, selectedCard];
           nextState.message = `對手打出了 ${selectedCard.name}，沒有配對。`;
         } else if (matches.length === 1 || matches.length === 2) {
-          // If 2, bot just picks the first one (bestMatch)
+          playSfx('match');
           nextState.field = nextState.field.filter(c => c.id !== bestMatch!.id);
           nextState.botCaptured = [...nextState.botCaptured, selectedCard, bestMatch!];
           nextState.message = `對手配對了 ${selectedCard.name}！`;
         } else if (matches.length === 3) {
+          playSfx('match');
           nextState.field = nextState.field.filter(c => c.month !== selectedCard.month);
           nextState.botCaptured = [...nextState.botCaptured, selectedCard, ...matches];
           nextState.message = `對手收走了場上三張 ${selectedCard.month}月牌！`;
@@ -396,6 +431,15 @@ export default function App() {
         <div className="wafu-panel rounded-2xl px-4 sm:px-6 py-4 relative overflow-hidden">
           <button
             type="button"
+            onClick={() => setShowRules(true)}
+            className="absolute top-3 right-12 z-20 p-2 rounded-lg text-cream/60 hover:text-gold hover:bg-gold/10 transition-colors"
+            aria-label="遊戲規則"
+            title="遊戲規則"
+          >
+            <HelpCircle size={18} />
+          </button>
+          <button
+            type="button"
             onClick={toggleMute}
             className="absolute top-3 right-3 z-20 p-2 rounded-lg text-cream/60 hover:text-gold hover:bg-gold/10 transition-colors"
             aria-label={muted ? '開啟背景音樂' : '關閉背景音樂'}
@@ -405,7 +449,7 @@ export default function App() {
           </button>
           <div className="absolute top-2 right-12 text-vermillion/20 text-4xl select-none pointer-events-none sakura-petal">✿</div>
           <div className="absolute bottom-2 left-4 text-gold/20 text-3xl select-none pointer-events-none sakura-petal">❀</div>
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-4 relative z-10">
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-4 relative z-10">
             <div className="text-center sm:text-left">
               <p className="text-gold/80 text-xs tracking-[0.3em] mb-1">花札</p>
               <h1 className="font-display text-2xl sm:text-3xl font-bold text-gold tracking-wide">Koi-Koi</h1>
@@ -413,16 +457,26 @@ export default function App() {
                 第 {state.round} 局 · 莊家：{state.dealer === 'player' ? character.name : '師匠'}
               </p>
             </div>
-            <div className="flex gap-6 sm:gap-10">
-              <div className="text-center">
-                <p className="text-xs text-cream/60 mb-1">師匠</p>
-                <p className="font-display text-2xl sm:text-3xl font-bold text-gold">{state.botScore}</p>
+            <div className="flex flex-col items-center gap-3 w-full sm:w-auto">
+              <div className="flex gap-6 sm:gap-10">
+                <div className="text-center">
+                  <p className="text-xs text-cream/60 mb-1">師匠</p>
+                  <p className="font-display text-2xl sm:text-3xl font-bold text-gold">{state.botScore}</p>
+                </div>
+                <div className="h-10 w-px bg-gold/30 self-center hidden sm:block" />
+                <div className="text-center">
+                  <p className="text-xs text-cream/60 mb-1">{character.name}</p>
+                  <p className="font-display text-2xl sm:text-3xl font-bold text-vermillion-light">{state.playerScore}</p>
+                </div>
               </div>
-              <div className="h-10 w-px bg-gold/30 self-center hidden sm:block" />
-              <div className="text-center">
-                <p className="text-xs text-cream/60 mb-1">{character.name}</p>
-                <p className="font-display text-2xl sm:text-3xl font-bold text-vermillion-light">{state.playerScore}</p>
-              </div>
+              {state.phase !== 'idle' && (
+                <MatchScoreboard
+                  playerLabel={character.name}
+                  botLabel="師匠"
+                  playerScore={state.playerScore}
+                  botScore={state.botScore}
+                />
+              )}
             </div>
           </div>
           <div className="sakura-divider mt-4" />
@@ -678,6 +732,45 @@ export default function App() {
           </motion.div>
         </div>
       )}
+
+      {/* Game over modal */}
+      {state.phase === 'game_over' && (
+        <div className="fixed inset-0 bg-indigo-deep/90 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="wafu-modal rounded-2xl p-8 text-center max-w-md w-full relative"
+          >
+            <div className="corner-ornament corner-ornament-tl" />
+            <div className="corner-ornament corner-ornament-tr" />
+            <div className="corner-ornament corner-ornament-bl" />
+            <div className="corner-ornament corner-ornament-br" />
+            <h2 className="font-display text-3xl font-bold text-gold mb-2">
+              {state.winner === 'player' ? '恭喜獲勝！' : '師匠獲勝'}
+            </h2>
+            <p className="text-lg text-cream mb-4">{state.message}</p>
+            <div className="mb-6 flex justify-center">
+              <MatchScoreboard
+                playerLabel={character.name}
+                botLabel="師匠"
+                playerScore={state.playerScore}
+                botScore={state.botScore}
+              />
+            </div>
+            <div className="mb-6">
+              <CharacterSelect selectedId={characterId} onSelect={setCharacterId} compact />
+            </div>
+            <button
+              onClick={() => startGame(false, true)}
+              className="wafu-btn-gold px-8 py-4 rounded-xl text-lg"
+            >
+              再來一局
+            </button>
+          </motion.div>
+        </div>
+      )}
+
+      {showRules && <RulesModal onClose={() => setShowRules(false)} />}
 
       <footer className="mt-6 max-w-6xl text-center text-[10px] text-cream/40 px-4">
         牌面圖素材：Louie Mantia ·{' '}
